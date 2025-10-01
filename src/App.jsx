@@ -4,6 +4,7 @@ import Alert from "./components/Alert";
 import FilterBar from "./components/FilterBar";
 import EventForm from "./components/EventForm";
 import EventList from "./components/EventList";
+import Modal from "./components/Modal";
 
 const API_URL = import.meta.env.VITE_API_URL + "/api/events";
 
@@ -13,6 +14,8 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [alert, setAlert] = useState({ message: "", type: "" });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, eventId: null });
+  const [updateModal, setUpdateModal] = useState({ isOpen: false, formData: null });
 
   const showAlert = (message, type = "success") => {
     setAlert({ message, type });
@@ -38,29 +41,52 @@ function App() {
   }, [filteredCategory, fetchEvents]);
 
   const handleSubmit = async (formData) => {
+    if (editingEvent) {
+      // Show update confirmation modal
+      setUpdateModal({ isOpen: true, formData });
+    } else {
+      // Create new event without confirmation
+      await createEvent(formData);
+    }
+  };
+
+  const createEvent = async (formData) => {
     try {
-      if (editingEvent) {
-        await axios.put(`${API_URL}/${editingEvent._id}`, formData);
-        showAlert("Event updated successfully!", "success");
-      } else {
-        await axios.post(API_URL, formData);
-        showAlert("Event created successfully!", "success");
-      }
-      resetForm();
+      await axios.post(API_URL, formData);
+      showAlert("Event created successfully!", "success");
       fetchEvents(filteredCategory);
+      resetForm();
     } catch (error) {
       showAlert(error.response?.data?.message || "Error saving event", "error");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this event?")) return;
+  const confirmUpdate = async () => {
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await axios.put(`${API_URL}/${editingEvent._id}`, updateModal.formData);
+      showAlert("Event updated successfully!", "success");
+      setUpdateModal({ isOpen: false, formData: null });
+      fetchEvents(filteredCategory);
+      resetForm();
+    } catch (error) {
+      showAlert(error.response?.data?.message || "Error saving event", "error");
+      setUpdateModal({ isOpen: false, formData: null });
+    }
+  };
+
+  const handleDelete = (id) => {
+    setDeleteModal({ isOpen: true, eventId: id });
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await axios.delete(`${API_URL}/${deleteModal.eventId}`);
       showAlert("Event deleted successfully!", "success");
       fetchEvents(filteredCategory);
+      setDeleteModal({ isOpen: false, eventId: null });
     } catch {
       showAlert("Error deleting event", "error");
+      setDeleteModal({ isOpen: false, eventId: null });
     }
   };
 
@@ -113,6 +139,30 @@ function App() {
           events={events}
           onEdit={handleEdit}
           onDelete={handleDelete}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, eventId: null })}
+          onConfirm={confirmDelete}
+          title="Delete Event"
+          message="Are you sure you want to delete this event?"
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmButtonClass="bg-red-500 hover:bg-red-600"
+        />
+
+        {/* Update Confirmation Modal */}
+        <Modal
+          isOpen={updateModal.isOpen}
+          onClose={() => setUpdateModal({ isOpen: false, formData: null })}
+          onConfirm={confirmUpdate}
+          title="Update Event"
+          message="Are you sure you want to update this event?"
+          confirmText="Update"
+          cancelText="Cancel"
+          confirmButtonClass="bg-yellow-500 hover:bg-yellow-600"
         />
       </div>
     </div>

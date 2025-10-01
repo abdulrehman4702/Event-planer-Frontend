@@ -24,7 +24,6 @@ const EventForm = ({ editingEvent, onSubmit, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
-    setFormData({ title: "", description: "", date: "", category: "Other" });
   };
 
   const handleChange = (field, value) => {
